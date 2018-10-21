@@ -9,8 +9,10 @@
 #include <AsyncMqttClient.h>
 #include <HX711.h>
 #include <ArduinoOTA.h>
+#include <stdlib.h>
 #include "config.h"
 
+#define FILTER_SIZE 15
 
 HX711 scale(PIN_DOUT, PIN_CLK);
 
@@ -180,37 +182,58 @@ void setup() {
   connectToWifi();
 }
 
+int compare(const void* a, const void* b)
+{
+     int int_a = * ( (int*) a );
+     int int_b = * ( (int*) b );
+
+     if ( int_a == int_b ) return 0;
+     else if ( int_a < int_b ) return -1;
+     else return 1;
+}
+
 void loop() {
   if (WiFi.isConnected() && (OTA_PATCH != 0)) {
     ArduinoOTA.handle();
   }
 
-  sum += scale.get_units() * 100;
-  samples++;
+  // static filter variables
+  static int filterSamples[FILTER_SIZE];
+  static int filterHead = 0;
 
-  if (samples >= NUM_SAMPLES) {
-    if (firstRun) {
-      firstRun = false;
-      if (SAVE_TARE == 0) {
-        average = offset;
-        return;
-      }
-    }
+  // take sample and increment head
+  filterSamples[filterHead] = scale.get_units() * 100;
+  filterHead = (filterHead + 1) % FILTER_SIZE;
 
-    char result[10];
-    average = sum / samples;
-    dtostrf(((average-offset) / (float) 100), 5, RESOLUTION, result);
-
-    if (mqttClient.connected() && strcmp(result, oldResult)) {
-      mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, result);
-      Serial.print("Pushing new result:");
-      Serial.println(result);
-    }
-
-    strncpy(oldResult, result, 10);
-    samples = 0;
-    sum = 0;
+  // copy filter array
+  int sortedSamples[FILTER_SIZE];
+  for (int i = 0; i < FILTER_SIZE; i++)
+  {
+    sortedSamples[i] = filterSamples[i];
   }
+
+  // sort the array copy
+  qsort(sortedSamples, FILTER_SIZE, sizeof(int), compare);
+  int median = sortedSamples[FILTER_SIZE / 2];
+
+  if (firstRun) {
+    firstRun = false;
+    if (SAVE_TARE == 0) {
+      median = offset;        
+      return;
+    }
+  }
+
+  char result[10];
+  dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
+
+  if (mqttClient.connected() && strcmp(result, oldResult)) {
+    mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, result);
+    Serial.print("Pushing new result:");
+    Serial.println(result);
+  }
+
+  strncpy(oldResult, result, 10);
 
   delay(SAMPLE_PERIOD);
 }
