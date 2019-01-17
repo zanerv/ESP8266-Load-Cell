@@ -114,6 +114,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 }
 
 void setup() {
+  pinMode(BUILTIN_LED, OUTPUT);  // initialize onboard LED as output
   Serial.begin(9600);
   EEPROM.begin(512);
   Serial.println("Startup!");
@@ -226,11 +227,16 @@ void loop() {
 
   char result[10];
   dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
-
   if (mqttClient.connected() && strcmp(result, oldResult)) {
-    mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, result);
-    Serial.print("Pushing new result:");
-    Serial.println(result);
+  int x=atoi(result);
+      if ( x <= 15 ) {
+        mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, "OFF");
+      } else {
+        mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, "ON");
+      }
+        mqttClient.publish(MQTT_TOPIC_MASS, MQTT_TOPIC_LOAD_QoS, true, result);
+    // Serial.print("Pushing new result:");
+    // Serial.println(result);
   }
 
   strncpy(oldResult, result, 10);
