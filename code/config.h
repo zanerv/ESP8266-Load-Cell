@@ -13,6 +13,7 @@
 // MQTT Client Config
 #define MQTT_CLIENT_ID "/room/<room_name>/bed"
 #define MQTT_TOPIC_LOAD MQTT_CLIENT_ID "/load"
+#define MQTT_TOPIC_MASS MQTT_CLIENT_ID "/mass"
 #define MQTT_TOPIC_LOAD_QoS 0 // Keep 0 if you don't know what it is doing
 #define MQTT_TOPIC_TARE MQTT_CLIENT_ID "/tare"
 #define MQTT_TOPIC_TARE_QoS 0 // Keep 0 if you don't know what it is doing
