@@ -26,6 +26,7 @@ Ticker wifiReconnectTimer;
 bool firstRun = true;
 unsigned char samples;
 int sum, average, offset;
+int min_mass = 15;
 char oldResult[10];
 
 void eeWriteInt(int pos, int val) {
@@ -228,8 +229,8 @@ void loop() {
   char result[10];
   dtostrf(((median-offset) / (float) 100), 5, RESOLUTION, result);
   if (mqttClient.connected() && strcmp(result, oldResult)) {
-  int x=atoi(result);
-      if ( x <= 15 ) {
+  int int_result=atoi(result);
+      if ( int_result <= min_mass ) {
         mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, "OFF");
       } else {
         mqttClient.publish(MQTT_TOPIC_LOAD, MQTT_TOPIC_LOAD_QoS, true, "ON");
